@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Play, Plus } from "lucide-react";
+import { Play } from "lucide-react";
 import { supabase } from "../lib/supabase/client";
 import { usePlayer } from "./PlayerProvider";
 

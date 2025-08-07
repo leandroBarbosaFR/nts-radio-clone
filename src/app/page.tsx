@@ -2,7 +2,6 @@
 import { useState } from "react";
 import HeroCarousel from "@/components/HeroCarousel";
 import GenreSidebar from "@/components/GenreSidebar";
-
 import "keen-slider/keen-slider.min.css";
 
 export default function Home() {
