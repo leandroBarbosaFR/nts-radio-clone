@@ -1,5 +1,3 @@
-// next.config.js
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -9,6 +7,9 @@ const nextConfig = {
         hostname: "cdn.sanity.io",
       },
     ],
+  },
+  experimental: {
+    appDir: true,
   },
 };
 
