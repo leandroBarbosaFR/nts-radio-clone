@@ -1,8 +1,20 @@
 "use client";
 import { useState } from "react";
-import HeroCarousel from "@/components/HeroCarousel";
-import GenreSidebar from "@/components/GenreSidebar";
-import "keen-slider/keen-slider.min.css";
+import dynamic from "next/dynamic";
+
+// Import dynamique pour éviter le prerendering SSR
+const HeroCarousel = dynamic(() => import("@/components/HeroCarousel"), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="animate-pulse font-mono">LOADING...</div>
+    </div>
+  ),
+});
+
+const GenreSidebar = dynamic(() => import("@/components/GenreSidebar"), {
+  ssr: false,
+});
 
 export default function Home() {
   const [selectedGenre, setSelectedGenre] = useState("Hip-Hop");
