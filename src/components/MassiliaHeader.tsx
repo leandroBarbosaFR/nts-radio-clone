@@ -63,7 +63,7 @@ export const MassiliaHeader = () => {
         // PAS D'AUTOPLAY - l'utilisateur doit cliquer pour jouer
         console.log("Pistes chargées, prêtes à être lues");
       } catch (error) {
-        console.error("Erreur de chargement des radios:", error);
+        console.error("Erreur de chargement des radios: ", error);
       } finally {
         if (isMounted) {
           setIsLoading(false);
