@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Play, Pause } from "lucide-react";
 import { supabase } from "../lib/supabase/client";
 import { usePlayer } from "./PlayerProvider";
@@ -53,15 +53,17 @@ const HeroCarousel = () => {
     fetchFeaturedTracks();
   }, []);
 
-  const nextSlide = () => {
+  // Créer nextSlide avec useCallback pour éviter les re-créations
+  const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
+  }, [slides.length]);
 
-  const prevSlide = () => {
+  const prevSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
+  }, [slides.length]);
 
   // Auto-advance slides uniquement si pas en cours de lecture
+  // CORRECTION: Ajout de nextSlide dans les dépendances ET useCallback
   useEffect(() => {
     if (slides.length === 0 || isPlaying) return;
 
@@ -70,7 +72,7 @@ const HeroCarousel = () => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [slides.length, isPlaying]);
+  }, [slides.length, isPlaying, nextSlide]); // ✅ Ajout de nextSlide
 
   const handlePlayTrack = () => {
     const currentSlideData = slides[currentSlide];

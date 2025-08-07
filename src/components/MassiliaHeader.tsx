@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePlayer } from "./PlayerProvider";
 import { Track } from "./PlayerProvider";
 import {
@@ -31,6 +31,7 @@ export const MassiliaHeader = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Fetch tracks UNE SEULE FOIS au montage du composant
+  // CORRECTION PRINCIPALE : Retirez isLoading des dépendances du useEffect
   useEffect(() => {
     let isMounted = true;
 
@@ -64,7 +65,9 @@ export const MassiliaHeader = () => {
       } catch (error) {
         console.error("Erreur de chargement des radios:", error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -73,7 +76,7 @@ export const MassiliaHeader = () => {
     return () => {
       isMounted = false;
     };
-  }, []); // Seulement au montage, AUCUNE dépendance
+  }, []); // ✅ SUPPRESSION de isLoading des dépendances - seulement au montage
 
   // Volume sync - séparé du fetch
   useEffect(() => {
@@ -95,9 +98,10 @@ export const MassiliaHeader = () => {
     }
   };
 
-  const handleToggleMute = () => {
-    setIsMuted(!isMuted);
-  };
+  // Suppression de handleToggleMute car non utilisé
+  // const handleToggleMute = () => {
+  //   setIsMuted(!isMuted);
+  // };
 
   const handlePlayPause = () => {
     if (!currentTrack && tracks.length > 0) {
@@ -107,22 +111,24 @@ export const MassiliaHeader = () => {
       isPlaying ? pause() : resume();
     } else {
       console.log("Aucune piste disponible");
+      // Correction ligne 107 : ajout d'une action au lieu d'une expression
+      return;
     }
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     console.log("Bouton suivant cliqué, tracks:", tracks.length);
     if (tracks.length > 0) {
       nextTrack();
     }
-  };
+  }, [tracks.length, nextTrack]);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     console.log("Bouton précédent cliqué, tracks:", tracks.length);
     if (tracks.length > 0) {
       previousTrack();
     }
-  };
+  }, [tracks.length, previousTrack]);
 
   return (
     <>
