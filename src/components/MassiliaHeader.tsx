@@ -1,0 +1,258 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { usePlayer } from "./PlayerProvider";
+import { Track } from "./PlayerProvider";
+import {
+  FaPause,
+  FaPlay,
+  FaVolumeUp,
+  FaVolumeMute,
+  FaBackward,
+  FaForward,
+} from "react-icons/fa";
+
+export const MassiliaHeader = () => {
+  const {
+    currentTrack,
+    isPlaying,
+    pause,
+    resume,
+    playTrack,
+    nextTrack,
+    previousTrack,
+    audioRef,
+  } = usePlayer();
+
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(0.7);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch tracks UNE SEULE FOIS au montage du composant
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTracks = async () => {
+      if (isLoading) return; // Éviter les appels multiples
+
+      setIsLoading(true);
+      try {
+        console.log("Récupération des pistes...");
+        const res = await fetch("/api/radios");
+        const json = await res.json();
+
+        console.log("Données brutes de l'API:", json);
+
+        if (!isMounted) return; // Composant démonté
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const formattedTracks: Track[] = json.data.map((track: any) => ({
+          title: track.title,
+          artist: track.artist,
+          audioUrl: track.audio_url,
+          coverImage: track.cover_image,
+          soundcloudUrl: track.soundcloud_url,
+        }));
+
+        console.log("Pistes formatées:", formattedTracks);
+        setTracks(formattedTracks);
+
+        // PAS D'AUTOPLAY - l'utilisateur doit cliquer pour jouer
+        console.log("Pistes chargées, prêtes à être lues");
+      } catch (error) {
+        console.error("Erreur de chargement des radios:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTracks();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Seulement au montage, AUCUNE dépendance
+
+  // Volume sync - séparé du fetch
+  useEffect(() => {
+    if (audioRef?.current) {
+      audioRef.current.volume = volume;
+      audioRef.current.muted = isMuted;
+    }
+  }, [audioRef, isMuted, volume]);
+
+  const toggleVolumeSlider = () => setShowVolumeSlider((prev) => !prev);
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    setVolume(val);
+    if (val === 0) {
+      setIsMuted(true);
+    } else if (isMuted) {
+      setIsMuted(false);
+    }
+  };
+
+  const handleToggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
+  const handlePlayPause = () => {
+    if (!currentTrack && tracks.length > 0) {
+      console.log("Aucune piste en cours, démarrage de la première");
+      playTrack(tracks[0], tracks);
+    } else if (currentTrack) {
+      isPlaying ? pause() : resume();
+    } else {
+      console.log("Aucune piste disponible");
+    }
+  };
+
+  const handleNext = () => {
+    console.log("Bouton suivant cliqué, tracks:", tracks.length);
+    if (tracks.length > 0) {
+      nextTrack();
+    }
+  };
+
+  const handlePrevious = () => {
+    console.log("Bouton précédent cliqué, tracks:", tracks.length);
+    if (tracks.length > 0) {
+      previousTrack();
+    }
+  };
+
+  return (
+    <>
+      <div className="w-full z-1000 fixed bg-black text-white border-b border-white flex items-center px-4 h-14 text-sm font-mono select-none">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="text-white font-bold text-lg tracking-widest"
+          >
+            MASSILIA RADIO
+          </Link>
+
+          <div className="flex items-center bg-white text-black px-2 py-1 uppercase font-semibold relative">
+            <span className="mr-4">Live Now</span>
+            <span
+              className="w-3 h-3 rounded-full bg-red-600 animate-pulse absolute right-2 top-1/2 -translate-y-1/2"
+              aria-label="Live indicator"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="bg-white text-black px-2">
+              {isLoading ? "..." : tracks.length}
+            </span>
+
+            <button
+              onClick={handlePrevious}
+              className="hover:text-neutral-300 disabled:opacity-50"
+              disabled={tracks.length === 0 || isLoading}
+            >
+              <FaBackward />
+            </button>
+
+            <button
+              onClick={handlePlayPause}
+              className="hover:text-neutral-300 disabled:opacity-50"
+              disabled={tracks.length === 0 || isLoading}
+            >
+              {isPlaying ? <FaPause /> : <FaPlay />}
+            </button>
+
+            <button
+              onClick={handleNext}
+              className="hover:text-neutral-300 disabled:opacity-50"
+              disabled={tracks.length === 0 || isLoading}
+            >
+              <FaForward />
+            </button>
+
+            <span className="truncate max-w-[200px]">
+              {currentTrack?.title || "Cliquez sur play pour commencer"}
+            </span>
+
+            {currentTrack && (
+              <span className="text-xs text-neutral-400">
+                par {currentTrack.artist}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="ml-auto flex items-center gap-4 relative">
+          <span className="hidden md:inline text-xs text-neutral-400">
+            Marseille
+          </span>
+
+          <button
+            onClick={toggleVolumeSlider}
+            className="hover:text-neutral-300"
+          >
+            {isMuted || volume === 0 ? <FaVolumeMute /> : <FaVolumeUp />}
+          </button>
+
+          {showVolumeSlider && (
+            <div
+              className="absolute top-full right-0 mt-2 bg-black/90 backdrop-blur border border-white/20 rounded-lg p-2 flex items-center justify-center"
+              style={{ width: 24, height: 120 }}
+            >
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="vertical-range"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .vertical-range {
+          -webkit-appearance: none;
+          width: 110px;
+          height: 4px;
+          transform: rotate(-90deg);
+          border-radius: 8px;
+          background: linear-gradient(
+            to right,
+            #ffffff 0%,
+            #ffffff ${(isMuted ? 0 : volume) * 100}%,
+            #525252 ${(isMuted ? 0 : volume) * 100}%,
+            #525252 100%
+          );
+          cursor: pointer;
+        }
+        .vertical-range::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: none;
+          margin-left: -4px;
+        }
+        .vertical-range::-moz-range-thumb {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #ffffff;
+          border: none;
+          margin-left: -4px;
+        }
+        .vertical-range:focus {
+          outline: none;
+        }
+      `}</style>
+    </>
+  );
+};
