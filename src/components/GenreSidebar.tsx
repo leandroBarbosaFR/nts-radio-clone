@@ -36,7 +36,7 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
     Dance: "from-pink-500 to-orange-500",
     Electronic: "from-gray-600 to-gray-800",
     Jazz: "from-indigo-500 to-blue-600",
-    Rock: "from-red-600 to-pink-600",
+    Country: "from-red-600 to-pink-600",
     Pop: "from-yellow-600 to-orange-600",
     Classical: "from-purple-600 to-pink-600",
     Reggae: "from-amber-600 to-yellow-500",
@@ -56,7 +56,7 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
       Dance: "DANCE FLOOR",
       Electronic: "ELECTRONIC",
       Jazz: "JAZZ LOUNGE",
-      Rock: "ROCK ANTHEMS",
+      Country: "COUNTRY USA",
       Pop: "POP HITS",
       Classical: "CLASSICAL",
       Reggae: "REGGAE VIBES",
@@ -73,7 +73,7 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
       Dance: "Electronic dance music hits",
       Electronic: "Digital soundscapes and synths",
       Jazz: "Smooth and sophisticated sounds",
-      Rock: "Electric guitars and powerful vocals",
+      Country: "Electric guitars and powerful vocals",
       Pop: "Chart-topping mainstream hits",
       Classical: "Orchestral and instrumental pieces",
       Reggae: "Island rhythms and positive vibes",
@@ -181,7 +181,7 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
 
   if (isLoading) {
     return (
-      <div className="w-80 h-screen bg-black text-white overflow-y-auto border-l border-white">
+      <div className="w-full md:w-80 h-screen bg-black text-white overflow-y-auto border-l border-white">
         <div className="flex items-center justify-center h-full">
           <div className="text-center font-mono">
             <div className="animate-pulse text-sm">LOADING GENRES...</div>
@@ -192,7 +192,7 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
   }
 
   return (
-    <div className="w-80 h-screen bg-black text-white overflow-y-auto scrollbar-thin scrollbar-track-gray-900 scrollbar-thumb-gray-700 border-l border-white">
+    <div className="w-full md:w-80 h-screen bg-black text-white overflow-y-auto scrollbar-thin scrollbar-track-gray-900 scrollbar-thumb-gray-700 border-t border-white md:border-t-0 md:border-l">
       {/* Header */}
       <div className="p-4 border-b border-white">
         <h2 className="text-sm font-bold uppercase tracking-wider text-white mb-2">
@@ -255,11 +255,11 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
                   {/* Action Buttons */}
                   <div className="flex gap-1">
                     <button
-                      className="w-6 h-6 bg-white bg-opacity-20 hover:bg-opacity-40 rounded-sm flex items-center justify-center transition-all"
+                      className="w-6 h-6 bg-white bg-opacity-20  hover:bg-opacity-40 rounded-none flex items-center justify-center transition-all"
                       onClick={(e) => handlePlayGenre(genreData.genre, e)}
                       title={`Play ${genreData.genre}`}
                     >
-                      <Play size={12} className="text-white" />
+                      <Play size={12} className="text-black" />
                     </button>
                   </div>
                 </div>
