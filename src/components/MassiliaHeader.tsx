@@ -78,6 +78,23 @@ export const MassiliaHeader = () => {
     };
   }, []); // ✅ SUPPRESSION de isLoading des dépendances - seulement au montage
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest(".volume-slider")) {
+        setShowVolumeSlider(false);
+      }
+    };
+
+    if (showVolumeSlider) {
+      document.addEventListener("click", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showVolumeSlider]);
+
   // Volume sync - séparé du fetch
   useEffect(() => {
     if (audioRef?.current) {
@@ -204,7 +221,7 @@ export const MassiliaHeader = () => {
 
           {showVolumeSlider && (
             <div
-              className="absolute top-full right-0 mt-2 bg-black/90 backdrop-blur border border-white/20 rounded-lg p-2 flex items-center justify-center"
+              className="absolute volume-slider top-full right-0 mt-2 bg-black/90 backdrop-blur border border-white/20 rounded-lg p-2 flex items-center justify-center"
               style={{ width: 24, height: 120 }}
             >
               <input
