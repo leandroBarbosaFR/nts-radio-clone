@@ -65,11 +65,11 @@ const HeroCarousel = () => {
   // Auto-advance slides uniquement si pas en cours de lecture
   // CORRECTION: Ajout de nextSlide dans les dépendances ET useCallback
   useEffect(() => {
-    if (slides.length === 0 || isPlaying) return;
+    if (slides.length === 0) return;
 
     const interval = setInterval(() => {
       nextSlide();
-    }, 5000);
+    }, 10000); // ✅ Changé de 5000ms à 10000ms (10 secondes)
 
     return () => clearInterval(interval);
   }, [slides.length, isPlaying, nextSlide]); // ✅ Ajout de nextSlide
@@ -126,26 +126,29 @@ const HeroCarousel = () => {
     <div className="relative w-full h-screen overflow-hidden bg-black">
       {/* Background Image */}
       <div className="absolute inset-0">
-        <Image
-          src={currentSlideData.cover_image}
-          alt={`Background for ${currentSlideData.title}`}
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority={currentSlide === 0}
-          onLoad={() => {
-            console.log(
-              "✅ Image chargée avec succès:",
-              currentSlideData.cover_image
-            );
-          }}
-          onError={() => {
-            console.error(
-              "❌ Erreur chargement image background:",
-              currentSlideData.cover_image
-            );
-          }}
-        />
+        <div className="relative w-full h-full highlights-background">
+          <Image
+            src={currentSlideData.cover_image}
+            alt={`Background for ${currentSlideData.title}`}
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority={currentSlide === 0}
+            onLoad={() => {
+              console.log(
+                "✅ Image chargée avec succès:",
+                currentSlideData.cover_image
+              );
+            }}
+            onError={() => {
+              console.error(
+                "❌ Erreur chargement image background:",
+                currentSlideData.cover_image
+              );
+            }}
+          />
+        </div>
+
         {/* Dark Overlay */}
         <div className="absolute inset-0 bg-[#0000002b]"></div>
       </div>
@@ -158,22 +161,23 @@ const HeroCarousel = () => {
             <div className="inline-block bg-white text-black px-3 py-1 text-xs font-bold uppercase tracking-wider mb-4">
               {currentSlideData.genre}
             </div>
+            <div className="bg-black p-2 mb-4">
+              {/* Main Title */}
+              <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 font-mono uppercase tracking-tight">
+                {currentSlideData.title}
+              </h1>
 
-            {/* Main Title */}
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 font-mono uppercase tracking-tight">
-              {currentSlideData.title}
-            </h1>
+              {/* Artist */}
+              <h2 className="text-xl md:text-2xl text-gray-300 mb-4 font-mono">
+                BY {currentSlideData.artist.toUpperCase()}
+              </h2>
 
-            {/* Artist */}
-            <h2 className="text-xl md:text-2xl text-gray-300 mb-4 font-mono">
-              BY {currentSlideData.artist.toUpperCase()}
-            </h2>
-
-            {/* Description */}
-            <p className="text-gray-300 text-lg mb-6 max-w-md">
-              {currentSlideData.description ||
-                `Latest ${currentSlideData.genre} track from ${currentSlideData.artist}`}
-            </p>
+              {/* Description */}
+              <p className="text-gray-300 text-lg mb-6 max-w-md">
+                {currentSlideData.description ||
+                  `Latest ${currentSlideData.genre} track from ${currentSlideData.artist}`}
+              </p>
+            </div>
 
             {/* Controls */}
             <div className="flex items-center gap-4 mb-8">
@@ -193,33 +197,18 @@ const HeroCarousel = () => {
                 {currentSlide + 1}/{slides.length}
               </span>
             </div>
+            <div>
+              <div className=" w-[50%] h-[1px] bg-gray-800 z-20">
+                <div
+                  className="h-full bg-white transition-all duration-300"
+                  style={{
+                    width: `${((currentSlide + 1) / slides.length) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Slide Indicators */}
-      {slides.length > 1 && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
-          {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`w-12 h-1 transition-all ${
-                index === currentSlide
-                  ? "bg-white"
-                  : "bg-white bg-opacity-40 hover:bg-opacity-60"
-              }`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Progress Bar */}
-      <div className="absolute bottom-0 left-0 w-full h-1 bg-gray-800 z-20">
-        <div
-          className="h-full bg-white transition-all duration-300"
-          style={{ width: `${((currentSlide + 1) / slides.length) * 100}%` }}
-        />
       </div>
 
       {/* Now Playing Indicator */}

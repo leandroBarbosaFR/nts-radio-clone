@@ -25,13 +25,13 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white font-mono flex">
-      {/* Main Content - Prend tout l'espace disponible */}
+    <div className="min-h-screen bg-black text-white font-mono flex flex-col lg:flex-row">
+      {/* Main Content */}
       <div className="flex-1">
         <HeroCarousel />
       </div>
 
-      {/* Sidebar - Position fixe à droite */}
+      {/* Sidebar */}
       <GenreSidebar
         onGenreSelect={handleGenreSelect}
         selectedGenre={selectedGenre}

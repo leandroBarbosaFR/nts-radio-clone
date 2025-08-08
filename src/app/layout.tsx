@@ -5,6 +5,7 @@ import { MassiliaHeader } from "@/components/MassiliaHeader";
 import { PlayerProvider } from "@/components/PlayerProvider";
 import { PlayerBar } from "@/components/PlayerBar";
 import type { Metadata } from "next";
+import { CookieConsent } from "@/components/CookieConsent";
 
 export const metadata: Metadata = {
   title: "Massilia Radio",
@@ -23,6 +24,7 @@ export default function RootLayout({
           <MassiliaHeader />
           <main className="pt-14">{children}</main>
           <PlayerBar />
+          <CookieConsent />
         </PlayerProvider>
       </body>
     </html>
