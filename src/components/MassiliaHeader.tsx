@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState, useCallback } from "react";
 import { usePlayer } from "./PlayerProvider";
 import { Track } from "./PlayerProvider";
@@ -30,24 +31,15 @@ export const MassiliaHeader = () => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch tracks UNE SEULE FOIS au montage du composant
-  // CORRECTION PRINCIPALE : Retirez isLoading des dépendances du useEffect
+  // fetch tracks once
   useEffect(() => {
     let isMounted = true;
-
     const fetchTracks = async () => {
-      if (isLoading) return; // Éviter les appels multiples
-
+      if (isLoading) return;
       setIsLoading(true);
       try {
-        console.log("Récupération des pistes...");
         const res = await fetch("/api/radios");
         const json = await res.json();
-
-        console.log("Données brutes de l'API:", json);
-
-        if (!isMounted) return; // Composant démonté
-
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const formattedTracks: Track[] = json.data.map((track: any) => ({
           title: track.title,
@@ -56,46 +48,30 @@ export const MassiliaHeader = () => {
           coverImage: track.cover_image,
           soundcloudUrl: track.soundcloud_url,
         }));
-
-        console.log("Pistes formatées:", formattedTracks);
+        if (!isMounted) return;
         setTracks(formattedTracks);
-
-        // PAS D'AUTOPLAY - l'utilisateur doit cliquer pour jouer
-        console.log("Pistes chargées, prêtes à être lues");
-      } catch (error) {
-        console.error("Erreur de chargement des radios: ", error);
+      } catch (e) {
+        console.error("Erreur de chargement des radios: ", e);
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (isMounted) setIsLoading(false);
       }
     };
-
     fetchTracks();
-
     return () => {
       isMounted = false;
     };
-  }, []); // ✅ SUPPRESSION de isLoading des dépendances - seulement au montage
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest(".volume-slider")) {
-        setShowVolumeSlider(false);
-      }
+      if (!target.closest(".volume-slider")) setShowVolumeSlider(false);
     };
-
-    if (showVolumeSlider) {
+    if (showVolumeSlider)
       document.addEventListener("click", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
+    return () => document.removeEventListener("click", handleClickOutside);
   }, [showVolumeSlider]);
 
-  // Volume sync - séparé du fetch
   useEffect(() => {
     if (audioRef?.current) {
       audioRef.current.volume = volume;
@@ -103,59 +79,47 @@ export const MassiliaHeader = () => {
     }
   }, [audioRef, isMuted, volume]);
 
-  const toggleVolumeSlider = () => setShowVolumeSlider((prev) => !prev);
+  const toggleVolumeSlider = () => setShowVolumeSlider((p) => !p);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
     setVolume(val);
-    if (val === 0) {
-      setIsMuted(true);
-    } else if (isMuted) {
-      setIsMuted(false);
-    }
+    if (val === 0) setIsMuted(true);
+    else if (isMuted) setIsMuted(false);
   };
-
-  // Suppression de handleToggleMute car non utilisé
-  // const handleToggleMute = () => {
-  //   setIsMuted(!isMuted);
-  // };
 
   const handlePlayPause = () => {
     if (!currentTrack && tracks.length > 0) {
-      console.log("Aucune piste en cours, démarrage de la première");
       playTrack(tracks[0], tracks);
     } else if (currentTrack) {
       isPlaying ? pause() : resume();
     } else {
-      console.log("Aucune piste disponible");
-      // Correction ligne 107 : ajout d'une action au lieu d'une expression
       return;
     }
   };
 
   const handleNext = useCallback(() => {
-    console.log("Bouton suivant cliqué, tracks:", tracks.length);
-    if (tracks.length > 0) {
-      nextTrack();
-    }
+    if (tracks.length > 0) nextTrack();
   }, [tracks.length, nextTrack]);
 
   const handlePrevious = useCallback(() => {
-    console.log("Bouton précédent cliqué, tracks:", tracks.length);
-    if (tracks.length > 0) {
-      previousTrack();
-    }
+    if (tracks.length > 0) previousTrack();
   }, [tracks.length, previousTrack]);
 
   return (
     <>
-      <div className="w-full z-1000 fixed bg-black text-white border-b border-white flex items-center px-4 h-14 text-sm font-mono select-none">
+      <div className="w-full z-1000 fixed bg-black text-white border-b border-white flex items-center px-4 h-[70px] text-sm font-mono select-none">
         <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="text-white font-bold text-lg tracking-widest"
-          >
-            MASSILIA RADIO
+          {/* LOGO IMAGE (70px max height) */}
+          <Link href="/" className="block" aria-label="Massilia Radio - Home">
+            <Image
+              src="https://cdn.sanity.io/media-libraries/mllo1PEUbcwG/images/ec2169739c8becafebc32ea4cfd72ecf556252dd-500x500.png"
+              alt="Massilia Radio"
+              width={70}
+              height={70}
+              priority
+              className="h-[70px] w-[70px] object-contain"
+            />
           </Link>
 
           <div className="flex items-center bg-white text-black px-2 py-1 uppercase font-semibold relative">
