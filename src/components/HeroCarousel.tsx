@@ -1,110 +1,90 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
 import { Play, Pause } from "lucide-react";
-import { supabase } from "../lib/supabase/client";
 import { usePlayer } from "./PlayerProvider";
 import Image from "next/image";
 
 interface HeroSlide {
-  id: number;
-  title: string;
-  artist: string;
-  description?: string;
-  audio_url: string;
-  cover_image: string;
-  genre: string;
-  created_at: string;
+  id: string;
+  title: string | null;
+  artist: string | null;
+  description?: string | null;
+  audio_url: string | null;
+  cover_image: string | null;
+  genre: string | null;
+  created_at: string | null;
 }
 
 const HeroCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { currentTrack, isPlaying, playTrack, pause, resume, setPlaylist } =
-    usePlayer();
 
-  // Récupérer les données depuis Supabase
+  const { currentTrack, isPlaying, playTrack, pause, resume } = usePlayer();
+
   useEffect(() => {
-    const fetchFeaturedTracks = async () => {
+    (async () => {
       try {
         setIsLoading(true);
-        console.log("Récupération des pistes featured...");
-
-        // Récupérer quelques pistes aléatoires pour le carousel
-        const { data, error } = await supabase
-          .from("tracks")
-          .select("*")
-          .limit(5); // Limite à 5 pistes pour le carousel
-
-        if (error) {
-          console.error("Erreur Supabase:", error);
-          throw error;
-        }
-
-        console.log("Pistes récupérées:", data);
-        setSlides(data || []);
+        const res = await fetch("/api/tracks/public", { cache: "no-store" });
+        const json = (await res.json()) as { slides?: HeroSlide[] };
+        setSlides(Array.isArray(json.slides) ? json.slides : []);
       } catch (err) {
-        console.error("Erreur lors du chargement des pistes featured:", err);
+        console.error("HeroCarousel load error:", err);
         setSlides([]);
       } finally {
         setIsLoading(false);
       }
-    };
-
-    fetchFeaturedTracks();
+    })();
   }, []);
 
-  // Créer nextSlide avec useCallback pour éviter les re-créations
   const nextSlide = useCallback(() => {
+    if (slides.length === 0) return;
     setCurrentSlide((prev) => (prev + 1) % slides.length);
   }, [slides.length]);
 
   const prevSlide = useCallback(() => {
+    if (slides.length === 0) return;
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   }, [slides.length]);
 
-  // Auto-advance slides uniquement si pas en cours de lecture
   useEffect(() => {
     if (slides.length === 0) return;
-
-    const interval = setInterval(() => {
-      nextSlide();
-    }, 10000); // 10 secondes
-
+    const interval = setInterval(nextSlide, 10000);
     return () => clearInterval(interval);
-  }, [slides.length, isPlaying, nextSlide]);
+  }, [slides.length, nextSlide]);
 
   const handlePlayTrack = () => {
-    const currentSlideData = slides[currentSlide];
-    if (!currentSlideData) return;
+    const s = slides[currentSlide];
+    if (!s) return;
 
     const track = {
-      title: currentSlideData.title,
-      artist: currentSlideData.artist,
-      audioUrl: currentSlideData.audio_url,
-      coverImage: currentSlideData.cover_image,
+      title: s.title ?? "Untitled",
+      artist: s.artist ?? "Unknown",
+      audioUrl: s.audio_url ?? "",
+      coverImage: s.cover_image ?? "",
     };
 
-    // Convertir toutes les slides en tracks pour la playlist
+    if (!track.audioUrl) {
+      console.warn("Track has no audio_url, cannot play.");
+      return;
+    }
+
     const heroTracks = slides.map((slide) => ({
-      title: slide.title,
-      artist: slide.artist,
-      audioUrl: slide.audio_url,
-      coverImage: slide.cover_image,
+      title: slide.title ?? "Untitled",
+      artist: slide.artist ?? "Unknown",
+      audioUrl: slide.audio_url ?? "",
+      coverImage: slide.cover_image ?? "",
     }));
 
     const isCurrentTrack = currentTrack?.audioUrl === track.audioUrl;
-
     if (isCurrentTrack) {
       isPlaying ? pause() : resume();
     } else {
-      console.log("Lecture depuis le carousel:", track);
-      // Passer toutes les pistes du hero comme playlist
       playTrack(track, heroTracks);
     }
   };
 
-  // Affichage de loading
   if (isLoading) {
     return (
       <div className="relative w-full h-screen overflow-hidden bg-black flex items-center justify-center">
@@ -115,84 +95,83 @@ const HeroCarousel = () => {
     );
   }
 
-  // Pas de pistes disponibles
   if (slides.length === 0) {
     return (
       <div className="relative w-full h-screen overflow-hidden bg-black flex items-center justify-center">
         <div className="text-center text-white font-mono">
-          <h2 className="text-2xl mb-2">NO FEATURED TRACKS</h2>
-          <p className="text-gray-400">Check your database connection</p>
+          <h2 className="text-2xl mb-2">NO PUBLISHED TRACKS</h2>
+          <p className="text-gray-400 mb-4">
+            No tracks have been published yet
+          </p>
+          <p className="text-sm text-gray-500">
+            Tracks must be published by an admin to appear here
+          </p>
         </div>
       </div>
     );
   }
 
-  const currentSlideData = slides[currentSlide];
+  const s = slides[currentSlide];
+  const bgSrc =
+    s.cover_image && s.cover_image.trim() !== "" ? s.cover_image : null;
   const isCurrentTrackPlaying =
-    currentTrack?.audioUrl === currentSlideData.audio_url && isPlaying;
+    !!s.audio_url && currentTrack?.audioUrl === s.audio_url && isPlaying;
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-black">
-      {/* Background Image */}
+      {/* Background */}
       <div className="absolute inset-0">
         <div className="relative w-full h-full">
-          <Image
-            src={currentSlideData.cover_image}
-            alt={`Background for ${currentSlideData.title}`}
-            fill
-            className="object-cover object-center"
-            sizes="100vw"
-            priority={currentSlide === 0}
-            onLoad={() => {
-              console.log(
-                "✅ Image chargée avec succès:",
-                currentSlideData.cover_image
-              );
-            }}
-            onError={() => {
-              console.error(
-                "❌ Erreur chargement image background:",
-                currentSlideData.cover_image
-              );
-            }}
-          />
+          {bgSrc ? (
+            <Image
+              src={bgSrc}
+              alt={`Background for ${s.title ?? "track"}`}
+              fill
+              className="object-cover object-center"
+              sizes="100vw"
+              priority={currentSlide === 0}
+              onLoad={() => console.log("✅ Image loaded:", bgSrc)}
+              onError={() => console.error("❌ Image load error:", bgSrc)}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 to-neutral-800" />
+          )}
         </div>
-
-        {/* Dark Overlay - plus prononcé pour créer plus de contraste */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
       </div>
 
       {/* Content */}
       <div className="relative z-10 h-full flex items-center">
         <div className="container mx-auto px-6">
           <div className="max-w-3xl">
-            {/* Genre Badge */}
             <div className="inline-block bg-white text-black px-4 py-2 text-sm font-bold uppercase tracking-wider mb-6">
-              {currentSlideData.genre}
+              {s.genre ?? "UNKNOWN"}
             </div>
+
             <div className="bg-black/70 backdrop-blur-sm p-6 mb-6 border border-white/10">
-              {/* Main Title */}
               <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 font-mono uppercase tracking-tight leading-tight">
-                {currentSlideData.title}
+                {s.title ?? "UNTITLED"}
               </h1>
 
-              {/* Artist */}
               <h2 className="text-lg md:text-xl text-gray-300 mb-4 font-mono">
-                BY {currentSlideData.artist.toUpperCase()}
+                BY {(s.artist ?? "Unknown").toUpperCase()}
               </h2>
 
-              {/* Description */}
               <p className="text-gray-300 text-base md:text-lg mb-0 max-w-lg leading-relaxed">
-                {currentSlideData.description ||
-                  `Latest ${currentSlideData.genre} track from ${currentSlideData.artist}`}
+                {s.description ??
+                  `Latest ${s.genre ?? "music"} track from ${
+                    s.artist ?? "Unknown"
+                  }`}
               </p>
             </div>
 
-            {/* Controls */}
             <div className="flex items-center gap-4 mb-8">
               <button
                 onClick={handlePlayTrack}
-                className="flex items-center gap-2 bg-white text-black px-6 py-3 font-bold uppercase tracking-wider hover:bg-gray-200 transition-colors"
+                className="flex items-center gap-2 bg-white text-black px-6 py-3 font-bold uppercase tracking-wider hover:bg-gray-200 transition-colors disabled:opacity-50"
+                disabled={!s.audio_url}
+                aria-disabled={!s.audio_url}
+                title={!s.audio_url ? "No audio source" : "Play"}
               >
                 {isCurrentTrackPlaying ? (
                   <Pause size={16} />
@@ -206,21 +185,19 @@ const HeroCarousel = () => {
                 {currentSlide + 1}/{slides.length}
               </span>
             </div>
-            <div>
-              <div className=" w-[50%] h-[1px] bg-gray-800 z-20">
-                <div
-                  className="h-full bg-white transition-all duration-300"
-                  style={{
-                    width: `${((currentSlide + 1) / slides.length) * 100}%`,
-                  }}
-                />
-              </div>
+
+            <div className="w-[50%] h-[1px] bg-gray-800 z-20">
+              <div
+                className="h-full bg-white transition-all duration-300"
+                style={{
+                  width: `${((currentSlide + 1) / slides.length) * 100}%`,
+                }}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Now Playing Indicator */}
       {isCurrentTrackPlaying && (
         <div className="absolute top-4 right-4 z-20 bg-red-600 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider animate-pulse">
           NOW PLAYING

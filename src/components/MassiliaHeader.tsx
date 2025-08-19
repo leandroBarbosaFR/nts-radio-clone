@@ -1,7 +1,10 @@
+// components/MassiliaHeader.tsx
 "use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { usePlayer } from "./PlayerProvider";
 import { Track } from "./PlayerProvider";
 import {
@@ -11,9 +14,45 @@ import {
   FaVolumeMute,
   FaBackward,
   FaForward,
+  FaUser,
 } from "react-icons/fa";
+import { LoginModal } from "./LoginModal";
+
+// ---- Types ----
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "dj";
+}
+
+interface RadioApiItem {
+  title: string | null;
+  artist: string | null;
+  audio_url: string | null;
+  cover_image: string | null;
+  soundcloud_url?: string | null;
+}
+interface RadiosApiResponse {
+  data: unknown;
+}
+
+function isRadioApiItem(v: unknown): v is RadioApiItem {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  const isNullableString = (x: unknown) =>
+    x === null || typeof x === "string" || typeof x === "undefined";
+  return (
+    isNullableString(o.title) &&
+    isNullableString(o.artist) &&
+    isNullableString(o.audio_url) &&
+    isNullableString(o.cover_image) &&
+    isNullableString(o.soundcloud_url)
+  );
+}
 
 export const MassiliaHeader = () => {
+  const router = useRouter();
   const {
     currentTrack,
     isPlaying,
@@ -22,7 +61,7 @@ export const MassiliaHeader = () => {
     playTrack,
     nextTrack,
     previousTrack,
-    setPlaylist, // Nouvelle méthode
+    setPlaylist,
     audioRef,
   } = usePlayer();
 
@@ -32,48 +71,98 @@ export const MassiliaHeader = () => {
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // fetch tracks once
+  // Login states
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  // Load persisted session (if any)
   useEffect(() => {
+    const token = localStorage.getItem("djToken");
+    const userData = localStorage.getItem("djUser");
+    if (token && userData) {
+      try {
+        const parsed: User = JSON.parse(userData);
+        setUser(parsed);
+      } catch {
+        localStorage.removeItem("djToken");
+        localStorage.removeItem("djUser");
+      }
+    }
+  }, []);
+
+  // Login
+  const handleLogin = async (email: string, password: string) => {
+    const response = await fetch("/api/dj/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (response.ok) {
+      const data: { token: string; user: User } = await response.json();
+      localStorage.setItem("djToken", data.token);
+      localStorage.setItem("djUser", JSON.stringify(data.user));
+      setUser(data.user);
+      router.push("/dashboard");
+    } else {
+      throw new Error("Login failed");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("djToken");
+    localStorage.removeItem("djUser");
+    setUser(null);
+    router.push("/");
+  };
+
+  // Fetch radios (once)
+  const hasFetchedRef = useRef(false);
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
     let isMounted = true;
-    const fetchTracks = async () => {
-      if (isLoading) return;
+    (async () => {
       setIsLoading(true);
       try {
         const res = await fetch("/api/radios");
-        const json = await res.json();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const formattedTracks: Track[] = json.data.map((track: any) => ({
-          title: track.title,
-          artist: track.artist,
-          audioUrl: track.audio_url,
-          coverImage: track.cover_image,
-          soundcloudUrl: track.soundcloud_url,
-        }));
+        const json = (await res.json()) as RadiosApiResponse;
+
+        const data =
+          json &&
+          typeof json === "object" &&
+          Array.isArray((json as { data?: unknown }).data)
+            ? ((json as { data: unknown[] }).data as unknown[])
+            : [];
+
+        const formattedTracks: Track[] = data
+          .filter(isRadioApiItem)
+          .map((t) => ({
+            title: t.title ?? "Untitled",
+            artist: t.artist ?? "Unknown",
+            audioUrl: t.audio_url ?? "",
+            coverImage: t.cover_image ?? "",
+            soundcloudUrl: t.soundcloud_url ?? undefined,
+          }));
+
         if (!isMounted) return;
 
         setTracks(formattedTracks);
-
-        // IMPORTANT: Définir la playlist dans le contexte du player
-        if (formattedTracks.length > 0) {
-          console.log(
-            "Définition de la playlist avec",
-            formattedTracks.length,
-            "pistes"
-          );
-          setPlaylist(formattedTracks);
-        }
+        if (formattedTracks.length > 0) setPlaylist(formattedTracks);
       } catch (e) {
-        console.error("Erreur de chargement des radios: ", e);
+        console.error("Erreur de chargement des radios:", e);
       } finally {
         if (isMounted) setIsLoading(false);
       }
-    };
-    fetchTracks();
+    })();
+
     return () => {
       isMounted = false;
     };
-  }, [setPlaylist]); // Ajouter setPlaylist dans les dépendances
+  }, [setPlaylist]);
 
+  // Volume slider UI
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -102,36 +191,24 @@ export const MassiliaHeader = () => {
 
   const handlePlayPause = () => {
     if (!currentTrack && tracks.length > 0) {
-      // Jouer la première piste avec toute la playlist
-      console.log("Démarrage de la première piste avec playlist complète");
       playTrack(tracks[0], tracks);
     } else if (currentTrack) {
       isPlaying ? pause() : resume();
-    } else {
-      console.log("Aucune piste disponible");
-      return;
     }
   };
 
   const handleNext = useCallback(() => {
-    if (tracks.length > 0) {
-      console.log("Next track depuis le header");
-      nextTrack();
-    }
+    if (tracks.length > 0) nextTrack();
   }, [tracks.length, nextTrack]);
 
   const handlePrevious = useCallback(() => {
-    if (tracks.length > 0) {
-      console.log("Previous track depuis le header");
-      previousTrack();
-    }
+    if (tracks.length > 0) previousTrack();
   }, [tracks.length, previousTrack]);
 
   return (
     <>
       <div className="w-full z-1000 fixed bg-black text-white border-b border-white flex items-center px-4 h-[70px] text-sm font-mono select-none">
         <div className="flex items-center gap-4">
-          {/* LOGO IMAGE (70px max height) */}
           <Link href="/" className="block" aria-label="Massilia Radio - Home">
             <Image
               src="https://cdn.sanity.io/media-libraries/mllo1PEUbcwG/images/ec2169739c8becafebc32ea4cfd72ecf556252dd-500x500.png"
@@ -159,7 +236,7 @@ export const MassiliaHeader = () => {
             <button
               onClick={handlePrevious}
               className="hover:text-neutral-300 disabled:opacity-50"
-              disabled={tracks.length === 0 || isLoading}
+              disabled={tracks.length === 0}
             >
               <FaBackward />
             </button>
@@ -167,7 +244,7 @@ export const MassiliaHeader = () => {
             <button
               onClick={handlePlayPause}
               className="hover:text-neutral-300 disabled:opacity-50"
-              disabled={tracks.length === 0 || isLoading}
+              disabled={tracks.length === 0}
             >
               {isPlaying ? <FaPause /> : <FaPlay />}
             </button>
@@ -175,7 +252,7 @@ export const MassiliaHeader = () => {
             <button
               onClick={handleNext}
               className="hover:text-neutral-300 disabled:opacity-50"
-              disabled={tracks.length === 0 || isLoading}
+              disabled={tracks.length === 0}
             >
               <FaForward />
             </button>
@@ -196,6 +273,32 @@ export const MassiliaHeader = () => {
           <span className="hidden md:inline text-xs text-neutral-400">
             Marseille
           </span>
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-1 hover:text-neutral-300 text-xs"
+              >
+                <FaUser size={12} />
+                {user.name}
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="text-xs hover:text-neutral-300 px-2 py-1 border border-white"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowLoginModal(true)}
+              className="flex items-center gap-1 hover:text-neutral-300 text-xs border border-white px-2 py-1"
+            >
+              <FaUser size={12} />
+              Login
+            </button>
+          )}
 
           <button
             onClick={toggleVolumeSlider}
@@ -222,6 +325,12 @@ export const MassiliaHeader = () => {
           )}
         </div>
       </div>
+
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+      />
 
       <style jsx>{`
         .vertical-range {
