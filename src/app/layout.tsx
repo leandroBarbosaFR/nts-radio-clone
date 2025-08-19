@@ -6,6 +6,7 @@ import { PlayerProvider } from "@/components/PlayerProvider";
 import { PlayerBar } from "@/components/PlayerBar";
 import type { Metadata } from "next";
 import { CookieConsent } from "@/components/CookieConsent";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Massilia Radio",
@@ -25,6 +26,7 @@ export default function RootLayout({
           <main className="pt-14">{children}</main>
           <PlayerBar />
           <CookieConsent />
+          <Analytics />
         </PlayerProvider>
       </body>
     </html>
