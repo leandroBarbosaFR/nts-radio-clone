@@ -29,7 +29,7 @@ export const PlayerBar = () => {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 w-full bg-black text-white border-t border-white p-3 flex items-center justify-between z-50 font-mono">
+      <div className="fixed bottom-0 left-0 w-full bg-black/70 backdrop-blur-sm text-white border-t border-white p-3 flex items-center justify-between z-50 font-mono">
         <div className="flex items-center gap-4">
           <div className="relative w-[50px] h-[50px] overflow-hidden rounded">
             <Image

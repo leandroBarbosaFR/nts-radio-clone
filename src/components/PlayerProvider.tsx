@@ -20,11 +20,14 @@ export interface Track {
 interface PlayerContextType {
   currentTrack: Track | null;
   isPlaying: boolean;
+  playlist: Track[]; // Exposer la playlist
+  currentIndex: number; // Exposer l'index actuel
   playTrack: (track: Track, playlistArg?: Track[]) => void;
   pause: () => void;
   resume: () => void;
   nextTrack: () => void;
   previousTrack: () => void;
+  setPlaylist: (tracks: Track[]) => void; // Nouvelle méthode pour définir la playlist
   audioRef: React.MutableRefObject<HTMLAudioElement | null>;
 }
 
@@ -44,46 +47,61 @@ export const PlayerProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Créer nextTrack avec useCallback pour éviter la dépendance cyclique
+  // Fonction utilitaire pour jouer une piste par index
+  const playTrackByIndex = useCallback(
+    (index: number) => {
+      if (!playlist.length || index < 0 || index >= playlist.length) {
+        console.log("Index invalide ou playlist vide:", {
+          index,
+          playlistLength: playlist.length,
+        });
+        return;
+      }
+
+      const track = playlist[index];
+      if (track && audioRef.current) {
+        const audio = audioRef.current;
+        audio.src = track.audioUrl;
+        audio.play().catch((error) => {
+          console.error("Erreur de lecture:", error);
+        });
+        setCurrentTrack(track);
+        setCurrentIndex(index);
+        console.log(
+          `Lecture de la piste ${index + 1}/${playlist.length}: ${track.title}`
+        );
+      }
+    },
+    [playlist]
+  );
+
   const nextTrack = useCallback(() => {
     if (!playlist.length) {
-      console.log("Pas de playlist disponible");
+      console.log("Pas de playlist disponible pour next");
       return;
     }
 
     const nextIndex = (currentIndex + 1) % playlist.length;
-    console.log(`Passage à la piste suivante: index ${nextIndex}`);
-    setCurrentIndex(nextIndex);
-
-    const track = playlist[nextIndex];
-    if (track && audioRef.current) {
-      const audio = audioRef.current;
-      audio.src = track.audioUrl;
-      audio.play().catch(console.error);
-      setCurrentTrack(track);
-    }
-  }, [playlist, currentIndex]);
+    console.log(
+      `Passage à la piste suivante: index ${currentIndex} -> ${nextIndex}`
+    );
+    playTrackByIndex(nextIndex);
+  }, [playlist.length, currentIndex, playTrackByIndex]);
 
   const previousTrack = useCallback(() => {
     if (!playlist.length) {
-      console.log("Pas de playlist disponible");
+      console.log("Pas de playlist disponible pour previous");
       return;
     }
 
     const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-    console.log(`Retour à la piste précédente: index ${prevIndex}`);
-    setCurrentIndex(prevIndex);
+    console.log(
+      `Retour à la piste précédente: index ${currentIndex} -> ${prevIndex}`
+    );
+    playTrackByIndex(prevIndex);
+  }, [playlist.length, currentIndex, playTrackByIndex]);
 
-    const track = playlist[prevIndex];
-    if (track && audioRef.current) {
-      const audio = audioRef.current;
-      audio.src = track.audioUrl;
-      audio.play().catch(console.error);
-      setCurrentTrack(track);
-    }
-  }, [playlist, currentIndex]);
-
-  // Gérer les événements audio séparément
+  // Gérer les événements audio
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -104,14 +122,21 @@ export const PlayerProvider = ({ children }: { children: ReactNode }) => {
       nextTrack();
     };
 
+    const handleError = (e: Event) => {
+      console.error("Erreur audio:", e);
+      setIsPlaying(false);
+    };
+
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
     };
   }, [nextTrack]);
 
@@ -124,15 +149,31 @@ export const PlayerProvider = ({ children }: { children: ReactNode }) => {
 
       const audio = audioRef.current;
 
-      if (playlistArg) {
-        console.log("Nouvelle playlist définie:", playlistArg);
+      // Si une nouvelle playlist est fournie, la définir
+      if (playlistArg && playlistArg.length > 0) {
+        console.log("Nouvelle playlist définie:", playlistArg.length, "pistes");
         setPlaylist(playlistArg);
+
+        // Trouver l'index de la piste dans la nouvelle playlist
         const newIndex = playlistArg.findIndex(
           (t) => t.audioUrl === track.audioUrl
         );
         const indexToSet = newIndex !== -1 ? newIndex : 0;
-        console.log(`Index de la piste actuelle: ${indexToSet}`);
+        console.log(
+          `Index de la piste actuelle dans la nouvelle playlist: ${indexToSet}`
+        );
         setCurrentIndex(indexToSet);
+      } else if (playlist.length > 0) {
+        // Si pas de nouvelle playlist mais qu'on en a une, chercher l'index
+        const existingIndex = playlist.findIndex(
+          (t) => t.audioUrl === track.audioUrl
+        );
+        if (existingIndex !== -1) {
+          setCurrentIndex(existingIndex);
+          console.log(
+            `Piste trouvée dans la playlist existante à l'index: ${existingIndex}`
+          );
+        }
       }
 
       const isSameTrack = currentTrack?.audioUrl === track.audioUrl;
@@ -149,7 +190,7 @@ export const PlayerProvider = ({ children }: { children: ReactNode }) => {
         setCurrentTrack(track);
       }
     },
-    [currentTrack, isPlaying]
+    [currentTrack, isPlaying, playlist]
   );
 
   const pause = useCallback(() => {
@@ -171,11 +212,14 @@ export const PlayerProvider = ({ children }: { children: ReactNode }) => {
       value={{
         currentTrack,
         isPlaying,
+        playlist,
+        currentIndex,
         playTrack,
         pause,
         resume,
         nextTrack,
         previousTrack,
+        setPlaylist,
         audioRef,
       }}
     >

@@ -38,8 +38,8 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
     Jazz: "from-indigo-500 to-blue-600",
     Country: "from-red-600 to-pink-600",
     Pop: "from-yellow-600 to-orange-600",
-    Classical: "from-purple-600 to-pink-600",
-    Reggae: "from-amber-600 to-yellow-500",
+    DeepHouse: "from-purple-600 to-pink-600",
+    Techno: "from-amber-600 to-yellow-500",
   };
 
   const getGenreColor = (genre: string): string => {
@@ -58,8 +58,8 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
       Jazz: "JAZZ LOUNGE",
       Country: "COUNTRY USA",
       Pop: "POP HITS",
-      Classical: "CLASSICAL",
-      Reggae: "REGGAE VIBES",
+      DeepHouse: "DEEP HOUSE",
+      Techno: "Techno",
     };
     return (
       displayNames[genre as keyof typeof displayNames] || genre.toUpperCase()
@@ -75,8 +75,8 @@ const GenreSidebar: React.FC<GenreSidebarProps> = ({
       Jazz: "Smooth and sophisticated sounds",
       Country: "Electric guitars and powerful vocals",
       Pop: "Chart-topping mainstream hits",
-      Classical: "Orchestral and instrumental pieces",
-      Reggae: "Island rhythms and positive vibes",
+      DeepHouse: "Instrumental pieces",
+      Techno: "Positive vibes",
     };
     return (
       descriptions[genre as keyof typeof descriptions] ||

@@ -22,6 +22,7 @@ export const MassiliaHeader = () => {
     playTrack,
     nextTrack,
     previousTrack,
+    setPlaylist, // Nouvelle méthode
     audioRef,
   } = usePlayer();
 
@@ -49,7 +50,18 @@ export const MassiliaHeader = () => {
           soundcloudUrl: track.soundcloud_url,
         }));
         if (!isMounted) return;
+
         setTracks(formattedTracks);
+
+        // IMPORTANT: Définir la playlist dans le contexte du player
+        if (formattedTracks.length > 0) {
+          console.log(
+            "Définition de la playlist avec",
+            formattedTracks.length,
+            "pistes"
+          );
+          setPlaylist(formattedTracks);
+        }
       } catch (e) {
         console.error("Erreur de chargement des radios: ", e);
       } finally {
@@ -60,7 +72,7 @@ export const MassiliaHeader = () => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [setPlaylist]); // Ajouter setPlaylist dans les dépendances
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -90,20 +102,29 @@ export const MassiliaHeader = () => {
 
   const handlePlayPause = () => {
     if (!currentTrack && tracks.length > 0) {
+      // Jouer la première piste avec toute la playlist
+      console.log("Démarrage de la première piste avec playlist complète");
       playTrack(tracks[0], tracks);
     } else if (currentTrack) {
       isPlaying ? pause() : resume();
     } else {
+      console.log("Aucune piste disponible");
       return;
     }
   };
 
   const handleNext = useCallback(() => {
-    if (tracks.length > 0) nextTrack();
+    if (tracks.length > 0) {
+      console.log("Next track depuis le header");
+      nextTrack();
+    }
   }, [tracks.length, nextTrack]);
 
   const handlePrevious = useCallback(() => {
-    if (tracks.length > 0) previousTrack();
+    if (tracks.length > 0) {
+      console.log("Previous track depuis le header");
+      previousTrack();
+    }
   }, [tracks.length, previousTrack]);
 
   return (

@@ -20,7 +20,8 @@ const HeroCarousel = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { currentTrack, isPlaying, playTrack, pause, resume } = usePlayer();
+  const { currentTrack, isPlaying, playTrack, pause, resume, setPlaylist } =
+    usePlayer();
 
   // Récupérer les données depuis Supabase
   useEffect(() => {
@@ -63,16 +64,15 @@ const HeroCarousel = () => {
   }, [slides.length]);
 
   // Auto-advance slides uniquement si pas en cours de lecture
-  // CORRECTION: Ajout de nextSlide dans les dépendances ET useCallback
   useEffect(() => {
     if (slides.length === 0) return;
 
     const interval = setInterval(() => {
       nextSlide();
-    }, 10000); // ✅ Changé de 5000ms à 10000ms (10 secondes)
+    }, 10000); // 10 secondes
 
     return () => clearInterval(interval);
-  }, [slides.length, isPlaying, nextSlide]); // ✅ Ajout de nextSlide
+  }, [slides.length, isPlaying, nextSlide]);
 
   const handlePlayTrack = () => {
     const currentSlideData = slides[currentSlide];
@@ -85,13 +85,22 @@ const HeroCarousel = () => {
       coverImage: currentSlideData.cover_image,
     };
 
+    // Convertir toutes les slides en tracks pour la playlist
+    const heroTracks = slides.map((slide) => ({
+      title: slide.title,
+      artist: slide.artist,
+      audioUrl: slide.audio_url,
+      coverImage: slide.cover_image,
+    }));
+
     const isCurrentTrack = currentTrack?.audioUrl === track.audioUrl;
 
     if (isCurrentTrack) {
       isPlaying ? pause() : resume();
     } else {
       console.log("Lecture depuis le carousel:", track);
-      playTrack(track, [track]); // On peut passer juste cette piste ou toutes les slides
+      // Passer toutes les pistes du hero comme playlist
+      playTrack(track, heroTracks);
     }
   };
 
@@ -126,12 +135,12 @@ const HeroCarousel = () => {
     <div className="relative w-full h-screen overflow-hidden bg-black">
       {/* Background Image */}
       <div className="absolute inset-0">
-        <div className="relative w-full h-full highlights-background">
+        <div className="relative w-full h-full">
           <Image
             src={currentSlideData.cover_image}
             alt={`Background for ${currentSlideData.title}`}
             fill
-            className="object-cover"
+            className="object-cover object-center"
             sizes="100vw"
             priority={currentSlide === 0}
             onLoad={() => {
@@ -149,31 +158,31 @@ const HeroCarousel = () => {
           />
         </div>
 
-        {/* Dark Overlay */}
-        <div className="absolute inset-0 bg-[#0000002b]"></div>
+        {/* Dark Overlay - plus prononcé pour créer plus de contraste */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
       </div>
 
       {/* Content */}
       <div className="relative z-10 h-full flex items-center">
         <div className="container mx-auto px-6">
-          <div className="max-w-2xl">
+          <div className="max-w-3xl">
             {/* Genre Badge */}
-            <div className="inline-block bg-white text-black px-3 py-1 text-xs font-bold uppercase tracking-wider mb-4">
+            <div className="inline-block bg-white text-black px-4 py-2 text-sm font-bold uppercase tracking-wider mb-6">
               {currentSlideData.genre}
             </div>
-            <div className="bg-black p-2 mb-4">
+            <div className="bg-black/70 backdrop-blur-sm p-6 mb-6 border border-white/10">
               {/* Main Title */}
-              <h1 className="text-4xl md:text-6xl font-bold text-white mb-4 font-mono uppercase tracking-tight">
+              <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 font-mono uppercase tracking-tight leading-tight">
                 {currentSlideData.title}
               </h1>
 
               {/* Artist */}
-              <h2 className="text-xl md:text-2xl text-gray-300 mb-4 font-mono">
+              <h2 className="text-lg md:text-xl text-gray-300 mb-4 font-mono">
                 BY {currentSlideData.artist.toUpperCase()}
               </h2>
 
               {/* Description */}
-              <p className="text-gray-300 text-lg mb-6 max-w-md">
+              <p className="text-gray-300 text-base md:text-lg mb-0 max-w-lg leading-relaxed">
                 {currentSlideData.description ||
                   `Latest ${currentSlideData.genre} track from ${currentSlideData.artist}`}
               </p>
