@@ -9,7 +9,7 @@ interface TrackData {
   artist: string;
   genre?: string;
   duration: string;
-  soundcloudUrl?: string; // Gardez camelCase dans l'interface TypeScript
+  soundcloudUrl?: string;
   is_published: boolean;
   created_at: string;
 }
@@ -17,7 +17,9 @@ interface TrackData {
 interface TrackModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (trackData: FormData) => Promise<void>;
+  // onSave is now optional; we do the API call here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onSave?: (payload: any) => Promise<void>;
   track?: TrackData;
 }
 
@@ -32,11 +34,12 @@ export const TrackModal = ({
     artist: track?.artist || "",
     genre: track?.genre || "",
     duration: track?.duration || "",
-    soundcloudUrl: track?.soundcloudUrl || "", // Interface en camelCase
+    soundcloudUrl: track?.soundcloudUrl || "",
   });
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   const genres = [
     "House",
@@ -51,28 +54,115 @@ export const TrackModal = ({
     "Other",
   ];
 
+  function getJwt() {
+    // adapt to your auth flow
+    return localStorage.getItem("dj_token") ?? "";
+  }
+
+  async function createSignedUrl({
+    bucket,
+    folder,
+    filename,
+    contentType,
+  }: {
+    bucket: string;
+    folder?: string;
+    filename: string;
+    contentType?: string;
+  }) {
+    const r = await fetch("/api/uploads/signed-url", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ bucket, folder, filename, contentType }),
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || "Failed to create signed URL");
+    return j as { signedUrl: string; path: string; publicUrl: string };
+  }
+
+  async function uploadToStorage(file: File, bucket: string, folder: string) {
+    const { signedUrl, publicUrl } = await createSignedUrl({
+      bucket,
+      folder,
+      filename: file.name,
+      contentType: file.type,
+    });
+    const put = await fetch(signedUrl, {
+      method: "PUT",
+      headers: {
+        "content-type": file.type || "application/octet-stream",
+        "x-upsert": "true",
+      },
+      body: file,
+    });
+    if (!put.ok) throw new Error("Upload failed");
+    return publicUrl; // if bucket is private, return the 'path' instead
+  }
+
   const handleSave = async () => {
     if (!formData.title || !formData.artist) {
       alert("Titre et artiste requis");
       return;
     }
+    if (!track && !audioFile) {
+      // creating a new track requires audio
+      alert("Fichier audio requis");
+      return;
+    }
 
     setLoading(true);
+    setErr(null);
+
     try {
-      const formDataToSend = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        formDataToSend.append(key, value);
+      // 1) Upload files directly to storage (skip if not provided)
+      let audioUrl: string | null = null;
+      let coverImageUrl: string | null = null;
+
+      if (audioFile) {
+        audioUrl = await uploadToStorage(audioFile, "radio-tracks", "tracks");
+      }
+      if (coverFile) {
+        coverImageUrl = await uploadToStorage(
+          coverFile,
+          "radio-images",
+          "covers"
+        );
+      }
+
+      // 2) Save metadata (JSON only) to your API
+      const payload = {
+        title: formData.title.trim(),
+        artist: formData.artist.trim(),
+        genre: formData.genre || null,
+        duration: formData.duration || null,
+        soundcloudUrl: formData.soundcloudUrl || null,
+        audioUrl, // may be null when editing w/o new audio
+        coverImageUrl, // may be null if no cover selected
+        fileSize: audioFile?.size ?? null,
+        trackId: track?.id ?? null, // if your API supports update
+      };
+
+      const res = await fetch("/api/dj/tracks/upload", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${getJwt()}`,
+        },
+        body: JSON.stringify(payload),
       });
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.error || "Erreur lors de l’enregistrement");
 
-      if (audioFile) formDataToSend.append("audioFile", audioFile);
-      if (coverFile) formDataToSend.append("coverFile", coverFile);
-      if (track?.id) formDataToSend.append("trackId", track.id);
+      // Optional: bubble up
+      if (onSave) await onSave(json);
 
-      await onSave(formDataToSend);
       onClose();
-    } catch (error) {
-      console.error("Error saving track:", error);
-      alert("Erreur lors de la sauvegarde");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      console.error("Error saving track:", e);
+      setErr(e.message || "Erreur lors de la sauvegarde");
+      alert(e.message || "Erreur lors de la sauvegarde");
     } finally {
       setLoading(false);
     }
@@ -134,9 +224,9 @@ export const TrackModal = ({
                 className="w-full px-3 py-2 bg-black border border-white text-white font-mono focus:outline-none focus:border-gray-400"
               >
                 <option value="">Sélectionner...</option>
-                {genres.map((genre) => (
-                  <option key={genre} value={genre}>
-                    {genre}
+                {genres.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
                   </option>
                 ))}
               </select>
@@ -174,11 +264,11 @@ export const TrackModal = ({
 
           <div>
             <label className="block text-white text-sm font-mono mb-2">
-              FICHIER AUDIO
+              FICHIER AUDIO {track ? "(optionnel)" : "*"}
             </label>
             <input
               type="file"
-              accept="audio/*"
+              accept="audio/mpeg,audio/mp4,audio/*"
               onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
               className="w-full px-3 py-2 bg-black border border-white text-white font-mono focus:outline-none focus:border-gray-400 file:bg-white file:text-black file:border-0 file:px-2 file:py-1 file:mr-2"
             />
@@ -205,6 +295,8 @@ export const TrackModal = ({
               </p>
             )}
           </div>
+
+          {err && <p className="text-red-400 font-mono">{err}</p>}
 
           <div className="flex gap-4 pt-4">
             <button
