@@ -45,7 +45,7 @@ export const PlayerBar = () => {
             />
           </div>
 
-          <div className="w-[200px] min-w-0">
+          <div className="w-[150px] min-w-0">
             <div className="text-sm font-bold uppercase truncate">
               {currentTrack.title}
             </div>

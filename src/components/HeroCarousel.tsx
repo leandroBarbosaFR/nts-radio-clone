@@ -26,7 +26,7 @@ const HeroCarousel = () => {
     (async () => {
       try {
         setIsLoading(true);
-        const res = await fetch("/api/tracks/public", { cache: "no-store" });
+        const res = await fetch("/api/tracks/public?limit=200", { cache: "no-store" });
         const json = (await res.json()) as { slides?: HeroSlide[] };
         setSlides(Array.isArray(json.slides) ? json.slides : []);
       } catch (err) {
@@ -157,12 +157,12 @@ const HeroCarousel = () => {
                 BY {(s.artist ?? "Unknown").toUpperCase()}
               </h2>
 
-              <p className="text-gray-300 text-base md:text-lg mb-0 max-w-lg leading-relaxed">
+              {/* <p className="text-gray-300 text-base md:text-lg mb-0 max-w-lg leading-relaxed">
                 {s.description ??
                   `Latest ${s.genre ?? "music"} track from ${
                     s.artist ?? "Unknown"
                   }`}
-              </p>
+              </p> */}
             </div>
 
             <div className="flex items-center gap-4 mb-8">

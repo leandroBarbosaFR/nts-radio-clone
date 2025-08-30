@@ -220,7 +220,7 @@ export const MassiliaHeader = () => {
             />
           </Link>
 
-          <div className="flex items-center bg-white text-black px-2 py-1 uppercase font-semibold relative">
+          <div className="flex items-center bg-white text-black px-2 py-1 hidden md:inline uppercase font-semibold relative">
             <span className="mr-4">Live Now</span>
             <span
               className="w-3 h-3 rounded-full bg-red-600 animate-pulse absolute right-2 top-1/2 -translate-y-1/2"
@@ -257,12 +257,8 @@ export const MassiliaHeader = () => {
               <FaForward />
             </button>
 
-            <span className="truncate max-w-[200px]">
-              {currentTrack?.title || "Cliquez sur play pour commencer"}
-            </span>
-
             {currentTrack && (
-              <span className="text-xs text-neutral-400">
+              <span className="text-xs text-neutral-400 hidden md:inline">
                 par {currentTrack.artist}
               </span>
             )}

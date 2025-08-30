@@ -1,30 +1,21 @@
-/** @type {import('next').NextConfig} */
+import type { NextConfig } from "next";
 
-const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ["bcryptjs", "jsonwebtoken"],
-  },
+const nextConfig: NextConfig = {
+  serverExternalPackages: ["bcryptjs", "jsonwebtoken"],
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "cdn.sanity.io",
-      },
-      {
-        protocol: "https",
-        hostname: "pdeaayngkuwtxhoywbwh.supabase.co",
-      },
+      { protocol: "https", hostname: "cdn.sanity.io" },
+      { protocol: "https", hostname: "pdeaayngkuwtxhoywbwh.supabase.co" },
     ],
   },
-  // Configuration pour les uploads de fichiers
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  webpack: (config: { resolve: { fallback: any } }) => {
+  webpack: (config) => {
+    config.resolve = config.resolve || {};
     config.resolve.fallback = {
-      ...config.resolve.fallback,
+      ...(config.resolve.fallback || {}),
       fs: false,
     };
     return config;
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
